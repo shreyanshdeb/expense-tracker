@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -53,7 +50,8 @@ func main() {
 	r.HandleFunc("/api/v1/expenses", getExpensesHandler).Methods("GET")
 	r.HandleFunc("/api/v1/expense/{id}", getExpenseByIDHandler).Methods("GET")
 	r.HandleFunc("/api/v1/expense", addExpenseHandler).Methods("POST")
-	r.HandleFunc("/api/v1/expense/{id}", deleteExpenseByIDHandler).Methods("Delete")
+	r.HandleFunc("/api/v1/expense/{id}", deleteExpenseByIDHandler).Methods("DELETE")
+	r.HandleFunc("/api/v1/expense/{id}", updateExpenseByIDHandler).Methods("PUT")
 
 	fmt.Println("Listening on 8080")
 	http.ListenAndServe(":8080", r)
@@ -129,16 +127,12 @@ func getExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func addExpenseHandler(w http.ResponseWriter, r *http.Request) {
-	var expense *Expense
-	if body, err := ioutil.ReadAll(r.Body); err == nil {
-		if err := json.Unmarshal([]byte(body), expense); err != nil {
-			fmt.Fprintln(w, err)
-			jsonData, _ := json.Marshal(`{"success":false}`)
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(jsonData)
-			return
-		}
-	}
+	var expense Expense
+	_ = json.NewDecoder(r.Body).Decode(&expense)
+
+	expense.ID = int64(len(Expensedb) + 1)
+	addExpense(expense)
+
 	jsonData, _ := json.Marshal(expense)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
@@ -159,8 +153,24 @@ func deleteExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonData)
 }
 
-func StreamToByte(stream io.Reader) []byte {
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(stream)
-	return buf.Bytes()
+func updateExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
+	var expense Expense
+
+	params := mux.Vars(r)
+	id := params["id"]
+	idInt, _ := strconv.ParseInt(id, 10, 64)
+	_ = json.NewDecoder(r.Body).Decode(&expense)
+
+	updated := updateExpenseByID(idInt, expense)
+
+	if !updated {
+		jsonData, _ := json.Marshal(`{"sucess" : false}`)
+		w.Header().Add("Content-Type", "application/json")
+		w.Write(jsonData)
+		return
+	}
+
+	jsonData, _ := json.Marshal(`{"sucess" : true}`)
+	w.Header().Add("Content-Type", "application/json")
+	w.Write(jsonData)
 }
