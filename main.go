@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
 
@@ -37,6 +39,6 @@ func main() {
 	r.HandleFunc("/api/v1/expense/{id}", deleteExpenseByIDHandler).Methods("DELETE")
 	r.HandleFunc("/api/v1/expense/{id}", updateExpenseByIDHandler).Methods("PUT")
 
-	fmt.Println("Listening on 8080")
-	http.ListenAndServe(":8080", r)
+	fmt.Println("Listening on 1234")
+	log.Fatal(http.ListenAndServe(":1234", handlers.CORS(handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}), handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS"}), handlers.AllowedOrigins([]string{"*"}))(r)))
 }
