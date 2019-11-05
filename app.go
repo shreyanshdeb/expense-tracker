@@ -35,7 +35,7 @@ func updateExpenseByID(id int64, expense Expense) bool {
 	for _, v := range Expensedb {
 		if v.ID == id {
 			v.Title = expense.Title
-			v.Description = expense.Title
+			v.Category = expense.Category
 			v.Amount = expense.Amount
 			v.DateTime = expense.DateTime
 			v.UserID = expense.UserID

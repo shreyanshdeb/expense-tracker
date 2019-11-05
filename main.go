@@ -13,7 +13,7 @@ func initDb() {
 	Expensedb = append(Expensedb, &Expense{
 		1,
 		"Rent",
-		"Rent for the month October",
+		"Needs",
 		4500,
 		"2019-10-01",
 		"",
@@ -21,7 +21,7 @@ func initDb() {
 	Expensedb = append(Expensedb, &Expense{
 		2,
 		"House Help",
-		"House Help Salary for the month October",
+		"Needs",
 		5000,
 		"2019-10-01",
 		"",
