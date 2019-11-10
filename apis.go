@@ -3,9 +3,9 @@ package main
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"github.com/gorilla/mux"
+	uuid "github.com/satori/go.uuid"
 )
 
 func getExpensesHandler(w http.ResponseWriter, r *http.Request) {
@@ -17,8 +17,7 @@ func getExpensesHandler(w http.ResponseWriter, r *http.Request) {
 func getExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	id := params["id"]
-	intID, _ := strconv.ParseInt(id, 10, 32)
-	expense, err := getExpenseByID(intID)
+	expense, err := getExpenseByID(id)
 	if err != nil {
 		jsonData, _ := json.Marshal(`{
 			"sucess":false,
@@ -33,11 +32,14 @@ func getExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func addExpenseHandler(w http.ResponseWriter, r *http.Request) {
-	var expense Expense
-	_ = json.NewDecoder(r.Body).Decode(&expense)
+	var je JSONExpense
+	_ = json.NewDecoder(r.Body).Decode(&je)
 
-	expense.ID = int64(len(Expensedb) + 1)
-	addExpense(expense)
+	expense := je.Expense()
+
+	id, _ := uuid.NewV4()
+	expense.ID = id.String()
+	addExpense(*expense)
 
 	jsonData, _ := json.Marshal(expense)
 	w.Header().Set("Content-Type", "application/json")
@@ -46,7 +48,7 @@ func addExpenseHandler(w http.ResponseWriter, r *http.Request) {
 
 func deleteExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	id, _ := strconv.ParseInt(params["id"], 10, 32)
+	id := params["id"]
 	deleted := deleteExpenseByID(id)
 	if !deleted {
 		jsonData, _ := json.Marshal(`{"success":false}`)
@@ -60,14 +62,15 @@ func deleteExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
-	var expense Expense
+	var je JSONExpense
 
 	params := mux.Vars(r)
 	id := params["id"]
-	idInt, _ := strconv.ParseInt(id, 10, 64)
-	_ = json.NewDecoder(r.Body).Decode(&expense)
+	_ = json.NewDecoder(r.Body).Decode(&je)
 
-	updated := updateExpenseByID(idInt, expense)
+	expense := je.Expense()
+
+	updated := updateExpenseByID(id, *expense)
 
 	if !updated {
 		jsonData, _ := json.Marshal(`{"sucess" : false}`)

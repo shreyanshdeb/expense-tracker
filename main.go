@@ -4,26 +4,30 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	uuid "github.com/satori/go.uuid"
 )
 
 func initDb() {
+	id1, _ := uuid.NewV4()
+	id2, _ := uuid.NewV4()
 	Expensedb = append(Expensedb, &Expense{
-		1,
+		id1.String(),
 		"Rent",
 		"Needs",
 		4500,
-		"2019-10-01",
+		time.Unix(1480979203, 0),
 		"",
 	})
 	Expensedb = append(Expensedb, &Expense{
-		2,
+		id2.String(),
 		"House Help",
 		"Needs",
 		5000,
-		"2019-10-01",
+		time.Unix(1480979203, 0),
 		"",
 	})
 }

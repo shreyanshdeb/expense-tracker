@@ -12,7 +12,7 @@ func addExpense(expense Expense) {
 	Expensedb = append(Expensedb, &expense)
 }
 
-func getExpenseByID(id int64) (*Expense, error) {
+func getExpenseByID(id string) (*Expense, error) {
 	for _, v := range Expensedb {
 		if v.ID == id {
 			return v, nil
@@ -21,7 +21,7 @@ func getExpenseByID(id int64) (*Expense, error) {
 	return nil, ErrExpenseNotFound
 }
 
-func deleteExpenseByID(id int64) bool {
+func deleteExpenseByID(id string) bool {
 	for i, v := range Expensedb {
 		if v.ID == id {
 			Expensedb = append(Expensedb[:i], Expensedb[i+1:]...)
@@ -31,7 +31,7 @@ func deleteExpenseByID(id int64) bool {
 	return false
 }
 
-func updateExpenseByID(id int64, expense Expense) bool {
+func updateExpenseByID(id string, expense Expense) bool {
 	for _, v := range Expensedb {
 		if v.ID == id {
 			v.Title = expense.Title
