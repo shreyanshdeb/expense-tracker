@@ -23,6 +23,12 @@ type Expense struct {
 	UserID   string    `json:"userid"`
 }
 
+type ExpenseBreakdown struct {
+	Savings []*Expense
+	Needs   []*Expense
+	Wants   []*Expense
+}
+
 var Expensedb = []*Expense{}
 
 func (je *JSONExpense) Expense() *Expense {

@@ -19,7 +19,7 @@ func initDb() {
 		"Rent",
 		"Needs",
 		4500,
-		time.Unix(1480979203, 0),
+		time.Unix(1572609600, 0),
 		"",
 	})
 	Expensedb = append(Expensedb, &Expense{
@@ -27,7 +27,7 @@ func initDb() {
 		"House Help",
 		"Needs",
 		5000,
-		time.Unix(1480979203, 0),
+		time.Unix(1572991215, 0),
 		"",
 	})
 }
@@ -42,6 +42,11 @@ func main() {
 	r.HandleFunc("/api/v1/expense", addExpenseHandler).Methods("POST")
 	r.HandleFunc("/api/v1/expense/{id}", deleteExpenseByIDHandler).Methods("DELETE")
 	r.HandleFunc("/api/v1/expense/{id}", updateExpenseByIDHandler).Methods("PUT")
+
+	r.HandleFunc("/api/v1/expensesformonth/{month}", listExpensesForMonthHandler).Methods("GET")
+	r.HandleFunc("/api/v1/totalexpenseformonth/{month}", getTotalForMonthHandler).Methods("GET")
+	r.HandleFunc("/api/v1/breakdownformonth/{month}", listExpenseBreakdownForMonthHandler).Methods("GET")
+	r.HandleFunc("/api/v1/sumbreakdownformonth/{month}", getExpenseBreakdownForMonthHandler).Methods("GET")
 
 	fmt.Println("Listening on 1234")
 	log.Fatal(http.ListenAndServe(":1234", handlers.CORS(handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}), handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS"}), handlers.AllowedOrigins([]string{"*"}))(r)))

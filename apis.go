@@ -2,7 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
@@ -81,5 +84,54 @@ func updateExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	jsonData, _ := json.Marshal(`{"sucess" : true}`)
 	w.Header().Add("Content-Type", "application/json")
+	w.Write(jsonData)
+}
+
+func listExpensesForMonthHandler(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	month := params["month"]
+	monthInt, err := strconv.ParseInt(month, 10, 64)
+	if err != nil {
+		fmt.Println("Failed to convert time to int64")
+	}
+	jsonData, _ := json.Marshal(listExpensesForMonth(time.Unix(monthInt, 0)))
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonData)
+}
+
+func getTotalForMonthHandler(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	month := params["month"]
+	monthInt, err := strconv.ParseInt(month, 10, 64)
+	if err != nil {
+		fmt.Println("Failed to convert time to int64")
+	}
+	total := getTotalForMonth(time.Unix(monthInt, 0))
+	jsonData, _ := json.Marshal(total)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonData)
+}
+
+func listExpenseBreakdownForMonthHandler(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	month := params["month"]
+	monthInt, err := strconv.ParseInt(month, 10, 64)
+	if err != nil {
+		fmt.Println("Failed to convert time to int64")
+	}
+	jsonData, _ := json.Marshal(listExpenseBreakdownForMonth(time.Unix(monthInt, 0)))
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonData)
+}
+
+func getExpenseBreakdownForMonthHandler(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	month := params["month"]
+	monthInt, err := strconv.ParseInt(month, 10, 64)
+	if err != nil {
+		fmt.Println("Failed to convert time to int64")
+	}
+	jsonData, _ := json.Marshal(getExpenseBreakdownForMonth(time.Unix(monthInt, 0)))
+	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
 }
