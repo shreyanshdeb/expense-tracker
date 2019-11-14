@@ -45,6 +45,11 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
+type ResponseStruct struct {
+	IsRequestSuccessful bool
+	Data                interface{}
+}
+
 var Expensedb = []*Expense{}
 
 var Userdb = []*User{}

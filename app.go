@@ -49,7 +49,6 @@ func updateExpenseByID(id string, expense Expense, userID string) bool {
 			v.Category = expense.Category
 			v.Amount = expense.Amount
 			v.DateTime = expense.DateTime
-			v.UserID = expense.UserID
 			return true
 		}
 	}

@@ -37,12 +37,13 @@ func getExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	expense, err := getExpenseByID(id, userID)
 	if err != nil {
-		jsonData, _ := json.Marshal(`{
-			"sucess":false,
-			"message": "Expense not found"
-		}`)
+		jsonData, _ := json.Marshal(ResponseStruct{
+			false,
+			nil,
+		})
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(jsonData)
+		return
 	}
 	jsonData, _ := json.Marshal(expense)
 	w.Header().Set("Content-Type", "application/json")
@@ -65,7 +66,10 @@ func addExpenseHandler(w http.ResponseWriter, r *http.Request) {
 	expense.UserID = userID
 	addExpense(*expense)
 
-	jsonData, _ := json.Marshal(expense)
+	jsonData, _ := json.Marshal(ResponseStruct{
+		true,
+		expense,
+	})
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
 }
@@ -82,12 +86,18 @@ func deleteExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	deleted := deleteExpenseByID(id, userID)
 	if !deleted {
-		jsonData, _ := json.Marshal(`{"success":false}`)
+		jsonData, _ := json.Marshal(ResponseStruct{
+			false,
+			nil,
+		})
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(jsonData)
 		return
 	}
-	jsonData, _ := json.Marshal(`{"success":true}`)
+	jsonData, _ := json.Marshal(ResponseStruct{
+		true,
+		nil,
+	})
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
 }
@@ -110,13 +120,19 @@ func updateExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 	updated := updateExpenseByID(id, *expense, userID)
 
 	if !updated {
-		jsonData, _ := json.Marshal(`{"sucess" : false}`)
+		jsonData, _ := json.Marshal(ResponseStruct{
+			false,
+			nil,
+		})
 		w.Header().Add("Content-Type", "application/json")
 		w.Write(jsonData)
 		return
 	}
 
-	jsonData, _ := json.Marshal(`{"sucess" : true}`)
+	jsonData, _ := json.Marshal(ResponseStruct{
+		true,
+		nil,
+	})
 	w.Header().Add("Content-Type", "application/json")
 	w.Write(jsonData)
 }
