@@ -10,6 +10,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 
+	// "golang.org/x/net/context"
 	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
 )
@@ -20,32 +21,47 @@ func getExpensesHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	jsonData, _ := json.Marshal(getExpenses(userID))
+	var expenseList []Expense
+	expenseList, ok = getExpenses(userID)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	var JSONExpenseList []JSONExpense
+	for _, v := range expenseList {
+		JSONExpenseList = append(JSONExpenseList, *NewJSONExpense(&v))
+	}
+	jsonData, _ := json.Marshal(JSONExpenseList)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
 }
 
 func getExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	id := params["id"]
+	ID := params["id"]
 
 	userID, ok := extractUserID(w, r)
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	expense, err := getExpenseByID(id, userID)
-	if err != nil {
+	var expense Expense
+	expense, ok = getExpenseByID(userID, ID)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	if expense.ID == "" {
 		jsonData, _ := json.Marshal(ResponseStruct{
 			false,
-			nil,
+			"Did not find expense for ID: " + ID,
 		})
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(jsonData)
 		return
 	}
-	jsonData, _ := json.Marshal(expense)
+	JSONResult := NewJSONExpense(&expense)
+	jsonData, _ := json.Marshal(JSONResult)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
 }
@@ -64,12 +80,19 @@ func addExpenseHandler(w http.ResponseWriter, r *http.Request) {
 	id, _ := uuid.NewV4()
 	expense.ID = id.String()
 	expense.UserID = userID
-	addExpense(*expense)
-
-	jsonData, _ := json.Marshal(ResponseStruct{
-		true,
-		expense,
-	})
+	ok = addExpense(*expense)
+	var jsonData []byte
+	if !ok {
+		jsonData, _ = json.Marshal(ResponseStruct{
+			false,
+			nil,
+		})
+	} else {
+		jsonData, _ = json.Marshal(ResponseStruct{
+			true,
+			*expense,
+		})
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
 }
@@ -83,8 +106,7 @@ func deleteExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	deleted := deleteExpenseByID(id, userID)
+	deleted := deleteExpenseByID(userID, id)
 	if !deleted {
 		jsonData, _ := json.Marshal(ResponseStruct{
 			false,
@@ -103,7 +125,7 @@ func deleteExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
-	userID, ok := extractUserID(w, r)
+	_, ok := extractUserID(w, r)
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -117,7 +139,8 @@ func updateExpenseByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	expense := je.Expense()
 
-	updated := updateExpenseByID(id, *expense, userID)
+	//updated := updateExpenseByID(id, *expense, userID)
+	updated := updateExpenseByID(id, *expense)
 
 	if !updated {
 		jsonData, _ := json.Marshal(ResponseStruct{
@@ -147,9 +170,23 @@ func listExpensesForMonthHandler(w http.ResponseWriter, r *http.Request) {
 	month := params["month"]
 	monthInt, err := strconv.ParseInt(month, 10, 64)
 	if err != nil {
-		fmt.Println("Failed to convert time to int64")
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	jsonData, _ := json.Marshal(listExpensesForMonth(time.Unix(monthInt, 0), userID))
+	date := time.Unix(monthInt, 0)
+	formdate, todate := getTerminalDates(date)
+	var expenseList []*Expense
+	expenseList, ok = listExpensesForMonth(userID, formdate, todate)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	var JSONExpenseList []JSONExpense
+	for _, v := range expenseList {
+		JSONExpenseList = append(JSONExpenseList, *NewJSONExpense(v))
+	}
+	jsonData, _ := json.Marshal(JSONExpenseList)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
 }
@@ -166,7 +203,13 @@ func getTotalForMonthHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		fmt.Println("Failed to convert time to int64")
 	}
-	total := getTotalForMonth(time.Unix(monthInt, 0), userID)
+	var total interface{}
+	fromDate, toDate := getTerminalDates(time.Unix(monthInt, 0))
+	total, ok = getTotalForMonth(userID, fromDate, toDate)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	jsonData, _ := json.Marshal(total)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
@@ -184,7 +227,13 @@ func listExpenseBreakdownForMonthHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		fmt.Println("Failed to convert time to int64")
 	}
-	jsonData, _ := json.Marshal(listExpenseBreakdownForMonth(time.Unix(monthInt, 0), userID))
+	fromDate, toDate := getTerminalDates(time.Unix(monthInt, 0))
+	breakdown, ok := listExpenseBreakdownForMonth(userID, fromDate, toDate)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	jsonData, _ := json.Marshal(breakdown)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
 }
@@ -201,7 +250,13 @@ func getExpenseBreakdownForMonthHandler(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		fmt.Println("Failed to convert time to int64")
 	}
-	jsonData, _ := json.Marshal(getExpenseBreakdownForMonth(time.Unix(monthInt, 0), userID))
+	fromDate, toDate := getTerminalDates(time.Unix(monthInt, 0))
+	breakdown, ok := getExpenseBreakdownForMonth(userID, fromDate, toDate)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	jsonData, _ := json.Marshal(breakdown)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(jsonData)
 }
@@ -279,4 +334,7 @@ func isAuthorized(h http.HandlerFunc) http.HandlerFunc {
 		}
 		h.ServeHTTP(w, r)
 	})
+}
+
+func testHandler(w http.ResponseWriter, r *http.Request) {
 }

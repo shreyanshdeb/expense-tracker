@@ -1,44 +1,19 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"time"
+	"os"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	uuid "github.com/satori/go.uuid"
+
+	firestore "cloud.google.com/go/firestore"
 )
 
-func initDb() {
-	id1, _ := uuid.NewV4()
-	id2, _ := uuid.NewV4()
-	id3, _ := uuid.NewV4()
-	Expensedb = append(Expensedb, &Expense{
-		id1.String(),
-		"Rent",
-		"Needs",
-		4500,
-		time.Unix(1572609600, 0),
-		"ac8421b4-4d05-4b1b-881f-90a7a7e0108b",
-	})
-	Expensedb = append(Expensedb, &Expense{
-		id2.String(),
-		"House Help",
-		"Needs",
-		5000,
-		time.Unix(1572991215, 0),
-		"ac8421b4-4d05-4b1b-881f-90a7a7e0108b",
-	})
-	Expensedb = append(Expensedb, &Expense{
-		id3.String(),
-		"House Help",
-		"Needs",
-		5000,
-		time.Unix(1572991215, 0),
-		"09c9d7bf-de35-41a3-a32f-f18bf9fe5c94",
-	})
+func initLocalDb() {
 	Userdb = append(Userdb, &User{
 		"ac8421b4-4d05-4b1b-881f-90a7a7e0108b",
 		"Tyler",
@@ -55,8 +30,30 @@ func initDb() {
 	})
 }
 
+var firestoreClient *firestore.Client
+var config Configuration
+
+func readConfig() {
+	file, _ := os.Open("config.json")
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	config = Configuration{}
+	err := decoder.Decode(&config)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+}
+
 func main() {
-	initDb()
+	readConfig()
+	initLocalDb()
+
+	var err error
+	firestoreClient, err = initDb()
+	if err != nil {
+		log.Fatalln("Error initialization Firestore", err)
+	}
+	//defer firestoreClient.Close()
 
 	r := mux.NewRouter()
 
@@ -73,8 +70,10 @@ func main() {
 
 	r.HandleFunc("/api/v1/signin", signIn).Methods("POST")
 
+	r.HandleFunc("/test", testHandler).Methods("POST")
+
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./static/")))
 
-	fmt.Println("Listening on 1234")
-	log.Fatal(http.ListenAndServe(":1234", handlers.CORS(handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}), handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS"}), handlers.AllowedOrigins([]string{"*"}))(r)))
+	fmt.Println("Listening on ", config.Port)
+	log.Fatal(http.ListenAndServe(":"+config.Port, handlers.CORS(handlers.AllowedHeaders([]string{"X-Requested-With", "Content-Type", "Authorization"}), handlers.AllowedMethods([]string{"GET", "POST", "PUT", "HEAD", "OPTIONS"}), handlers.AllowedOrigins([]string{"*"}))(r)))
 }

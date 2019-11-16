@@ -50,6 +50,11 @@ type ResponseStruct struct {
 	Data                interface{}
 }
 
+type Configuration struct {
+	Port                        string
+	FirebaseCredentialsFilePath string
+}
+
 var Expensedb = []*Expense{}
 
 var Userdb = []*User{}

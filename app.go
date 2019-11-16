@@ -7,86 +7,115 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/mitchellh/mapstructure"
+	"google.golang.org/api/iterator"
 )
 
-func getExpenses(userID string) []Expense {
-	AllExpenses := []Expense{}
-	for _, v := range Expensedb {
-		if v.UserID == userID {
-			AllExpenses = append(AllExpenses, *v)
+func getExpenses(userID string) ([]Expense, bool) {
+	var result []Expense
+	iter := getAllExpensesFromDb(userID)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
 		}
-	}
-	return AllExpenses
-}
-
-func addExpense(expense Expense) {
-	Expensedb = append(Expensedb, &expense)
-}
-
-func getExpenseByID(id string, userID string) (*Expense, error) {
-	for _, v := range Expensedb {
-		if v.ID == id && v.UserID == userID {
-			return v, nil
+		if err != nil {
+			return nil, false
 		}
+		var expense Expense
+		mapstructure.Decode(doc.Data(), &expense)
+		result = append(result, expense)
 	}
-	return nil, ErrExpenseNotFound
+	return result, true
 }
 
-func deleteExpenseByID(id string, userID string) bool {
-	for i, v := range Expensedb {
-		if v.ID == id && v.UserID == userID {
-			Expensedb = append(Expensedb[:i], Expensedb[i+1:]...)
-			return true
+func addExpense(expense Expense) bool {
+	ok := addExpenseToDb(expense)
+	return ok
+}
+
+func getExpenseByID(userID string, ID string) (Expense, bool) {
+	iter := getExpenseByIDFromDb(userID, ID)
+	var expense Expense
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
 		}
-	}
-	return false
-}
-
-func updateExpenseByID(id string, expense Expense, userID string) bool {
-	for _, v := range Expensedb {
-		if v.ID == id && v.UserID == userID {
-			v.Title = expense.Title
-			v.Category = expense.Category
-			v.Amount = expense.Amount
-			v.DateTime = expense.DateTime
-			return true
+		if err != nil {
+			return expense, false
 		}
+		mapstructure.Decode(doc.Data(), &expense)
 	}
-	return false
+	return expense, true
 }
 
-func listExpensesForMonth(date time.Time, userID string) []*Expense {
-	var ExpenseForTheMonth = []*Expense{}
-	for _, v := range Expensedb {
-		if v.UserID == userID && (v.DateTime.Year() == date.Year()) && (v.DateTime.Month() == date.Month()) {
-			ExpenseForTheMonth = append(ExpenseForTheMonth, v)
+func deleteExpenseByID(userID string, ID string) bool {
+	ok := deleteExpenseFromDb(userID, ID)
+	return ok
+}
+
+func updateExpenseByID(id string, expense Expense) bool {
+	ok := updateExpenseInDb(id, expense)
+	return ok
+}
+
+func listExpensesForMonth(userID string, fromDate time.Time, toDate time.Time) ([]*Expense, bool) {
+	// var ExpenseForTheMonth = []*Expense{}
+	// for _, v := range Expensedb {
+	// 	if v.UserID == userID && (v.DateTime.Year() == date.Year()) && (v.DateTime.Month() == date.Month()) {
+	// 		ExpenseForTheMonth = append(ExpenseForTheMonth, v)
+	// 	}
+	// }
+	// return ExpenseForTheMonth
+	iter := getExpensesForDateFromDb(userID, fromDate, toDate)
+	var result []*Expense
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
 		}
+		if err != nil {
+			return nil, false
+		}
+		var expense Expense
+		err = mapstructure.Decode(doc.Data(), &expense)
+		if err != nil {
+			return nil, false
+		}
+		result = append(result, &expense)
 	}
-	return ExpenseForTheMonth
+	return result, true
 }
 
-func getTotalForMonth(date time.Time, userID string) interface{} {
+func getTotalForMonth(userID string, fromDate time.Time, toDate time.Time) (interface{}, bool) {
 	var total float64
-	for _, v := range Expensedb {
-		if v.UserID == userID && (v.DateTime.Year() == date.Year()) && (v.DateTime.Month() == date.Month()) {
-			total += v.Amount
-		}
+	expenseList, ok := listExpensesForMonth(userID, fromDate, toDate)
+	if !ok {
+		return nil, false
+	}
+	for _, v := range expenseList {
+		total += v.Amount
 	}
 	totalStruct := struct {
 		Total float64 `json:"TotalExpenses"`
 	}{
 		total,
 	}
-	return totalStruct
+	return totalStruct, true
 }
 
-func listExpenseBreakdownForMonth(date time.Time, userID string) *ExpenseBreakdown {
+func listExpenseBreakdownForMonth(userID string, fromDate time.Time, toDate time.Time) (*ExpenseBreakdown, bool) {
 	var breakdown = ExpenseBreakdown{
 		Savings: []*Expense{},
 		Needs:   []*Expense{},
 		Wants:   []*Expense{},
 	}
-	for _, v := range listExpensesForMonth(date, userID) {
+	expenseList, ok := listExpensesForMonth(userID, fromDate, toDate)
+	if !ok {
+		return nil, false
+	}
+	for _, v := range expenseList {
 		if v.Category == "Needs" {
 			breakdown.Needs = append(breakdown.Needs, v)
 		} else if v.Category == "Wants" {
@@ -95,11 +124,14 @@ func listExpenseBreakdownForMonth(date time.Time, userID string) *ExpenseBreakdo
 			breakdown.Savings = append(breakdown.Savings, v)
 		}
 	}
-	return &breakdown
+	return &breakdown, true
 }
 
-func getExpenseBreakdownForMonth(date time.Time, userID string) interface{} {
-	breakdown := listExpenseBreakdownForMonth(date, userID)
+func getExpenseBreakdownForMonth(userID string, fromDate time.Time, toDate time.Time) (interface{}, bool) {
+	breakdown, ok := listExpenseBreakdownForMonth(userID, fromDate, toDate)
+	if !ok {
+		return nil, false
+	}
 	var savingsTotal float64
 	var needsTotal float64
 	var wantsTotal float64
@@ -124,7 +156,7 @@ func getExpenseBreakdownForMonth(date time.Time, userID string) interface{} {
 		wantsTotal,
 	}
 
-	return expenseBreakdown
+	return expenseBreakdown, true
 }
 
 func validateUser(Email string, Password string) (bool, string) {
@@ -165,4 +197,11 @@ func extractUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
 	}
 	userID := fmt.Sprintf("%v", claims["UserID"])
 	return userID, true
+}
+
+func getTerminalDates(date time.Time) (time.Time, time.Time) {
+	Year, Month, _ := date.Date()
+	firstOfMonth := time.Date(Year, Month, 1, 0, 0, 0, 0, time.UTC)
+	lastOfMonth := time.Date(Year, Month+1, 1, 0, 0, 0, -1, time.UTC)
+	return firstOfMonth, lastOfMonth
 }
