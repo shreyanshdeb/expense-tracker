@@ -13,23 +13,6 @@ import (
 	firestore "cloud.google.com/go/firestore"
 )
 
-func initLocalDb() {
-	Userdb = append(Userdb, &User{
-		"ac8421b4-4d05-4b1b-881f-90a7a7e0108b",
-		"Tyler",
-		"tylerj@top.com",
-		"9713161575",
-		"dema",
-	})
-	Userdb = append(Userdb, &User{
-		"09c9d7bf-de35-41a3-a32f-f18bf9fe5c94",
-		"Josh",
-		"joshd@top.com",
-		"9826342221",
-		"scottland",
-	})
-}
-
 var firestoreClient *firestore.Client
 var config Configuration
 
@@ -46,7 +29,6 @@ func readConfig() {
 
 func main() {
 	readConfig()
-	initLocalDb()
 
 	var err error
 	firestoreClient, err = initDb()
@@ -68,7 +50,8 @@ func main() {
 	r.HandleFunc("/api/v1/breakdownformonth/{month}", isAuthorized(listExpenseBreakdownForMonthHandler)).Methods("GET")
 	r.HandleFunc("/api/v1/sumbreakdownformonth/{month}", isAuthorized(getExpenseBreakdownForMonthHandler)).Methods("GET")
 
-	r.HandleFunc("/api/v1/signin", signIn).Methods("POST")
+	r.HandleFunc("/api/v1/signup", signUpHandler).Methods("POST")
+	r.HandleFunc("/api/v1/signin", signInHandler).Methods("POST")
 
 	r.HandleFunc("/test", testHandler).Methods("POST")
 

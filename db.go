@@ -31,7 +31,7 @@ func initDb() (*firestore.Client, error) {
 }
 
 func addExpenseToDb(expense Expense) bool {
-	_, err := firestoreClient.Collection("expense-test").Doc(expense.ID).Set(context.Background(), expense)
+	_, err := firestoreClient.Collection(config.Collections["Expense"]).Doc(expense.ID).Set(context.Background(), expense)
 	if err != nil {
 		return false
 	}
@@ -39,22 +39,22 @@ func addExpenseToDb(expense Expense) bool {
 }
 
 func getAllExpensesFromDb(userID string) *firestore.DocumentIterator {
-	iter := firestoreClient.Collection("expense-test").Where("UserID", "==", userID).Documents(context.Background())
+	iter := firestoreClient.Collection(config.Collections["Expense"]).Where("UserID", "==", userID).Documents(context.Background())
 	return iter
 }
 
 func getExpenseByIDFromDb(userID string, ID string) *firestore.DocumentIterator {
-	iter := firestoreClient.Collection("expense-test").Where("UserID", "==", userID).Where("ID", "==", ID).Documents(context.Background())
+	iter := firestoreClient.Collection(config.Collections["Expense"]).Where("UserID", "==", userID).Where("ID", "==", ID).Documents(context.Background())
 	return iter
 }
 
 func getExpensesForDateFromDb(userID string, fromdate time.Time, todate time.Time) *firestore.DocumentIterator {
-	iter := firestoreClient.Collection("expense-test").Where("UserID", "==", "ac8421b4-4d05-4b1b-881f-90a7a7e0108b").Where("DateTime", ">=", fromdate).Where("DateTime", "<=", todate).Documents(context.Background())
+	iter := firestoreClient.Collection(config.Collections["Expense"]).Where("UserID", "==", userID).Where("DateTime", ">=", fromdate).Where("DateTime", "<=", todate).Documents(context.Background())
 	return iter
 }
 
 func deleteExpenseFromDb(userID string, ID string) bool {
-	_, err := firestoreClient.Collection("expense-test").Doc(ID).Delete(context.Background())
+	_, err := firestoreClient.Collection(config.Collections["Expense"]).Doc(ID).Delete(context.Background())
 	if err != nil {
 		return false
 	}
@@ -62,9 +62,32 @@ func deleteExpenseFromDb(userID string, ID string) bool {
 }
 
 func updateExpenseInDb(ID string, expense Expense) bool {
-	_, err := firestoreClient.Collection("expense-test").Doc(ID).Set(context.Background(), expense)
+	_, err := firestoreClient.Collection(config.Collections["Expense"]).Doc(ID).Set(context.Background(), expense)
 	if err != nil {
 		return false
 	}
 	return true
+}
+
+func addUserToDb(user User) bool {
+	_, err := firestoreClient.Collection(config.Collections["User"]).Doc(user.ID).Set(context.Background(), user)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func getUserByID(userID string) *firestore.DocumentIterator {
+	iter := firestoreClient.Collection(config.Collections["User"]).Where("ID", "==", userID).Documents(context.Background())
+	return iter
+}
+
+func getUserByEmail(userName string) *firestore.DocumentIterator {
+	iter := firestoreClient.Collection(config.Collections["User"]).Where("Email", "==", userName).Documents(context.Background())
+	return iter
+}
+
+func getUserByEmailAndPassword(userName string, password string) *firestore.DocumentIterator {
+	iter := firestoreClient.Collection(config.Collections["User"]).Where("Email", "==", userName).Where("Password", "==", password).Documents(context.Background())
+	return iter
 }

@@ -8,6 +8,8 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/mitchellh/mapstructure"
+	uuid "github.com/satori/go.uuid"
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/iterator"
 )
 
@@ -135,6 +137,7 @@ func getExpenseBreakdownForMonth(userID string, fromDate time.Time, toDate time.
 	var savingsTotal float64
 	var needsTotal float64
 	var wantsTotal float64
+	var total float64
 
 	for _, v := range breakdown.Savings {
 		savingsTotal += v.Amount
@@ -145,12 +148,14 @@ func getExpenseBreakdownForMonth(userID string, fromDate time.Time, toDate time.
 	for _, v := range breakdown.Wants {
 		wantsTotal += v.Amount
 	}
-
+	total = savingsTotal + needsTotal + wantsTotal
 	expenseBreakdown := struct {
+		Total   float64
 		Savings float64
 		Needs   float64
 		Wants   float64
 	}{
+		total,
 		savingsTotal,
 		needsTotal,
 		wantsTotal,
@@ -160,9 +165,22 @@ func getExpenseBreakdownForMonth(userID string, fromDate time.Time, toDate time.
 }
 
 func validateUser(Email string, Password string) (bool, string) {
-	for _, v := range Userdb {
-		if v.Email == Email && v.Password == Password {
-			return true, v.ID
+	iter := getUserByEmail(Email)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return false, ""
+		}
+		var user User
+		err = mapstructure.Decode(doc.Data(), &user)
+		if err != nil {
+			return false, ""
+		}
+		if comparePasswords(user.Password, Password) {
+			return true, user.ID
 		}
 	}
 	return false, ""
@@ -204,4 +222,80 @@ func getTerminalDates(date time.Time) (time.Time, time.Time) {
 	firstOfMonth := time.Date(Year, Month, 1, 0, 0, 0, 0, time.UTC)
 	lastOfMonth := time.Date(Year, Month+1, 1, 0, 0, 0, -1, time.UTC)
 	return firstOfMonth, lastOfMonth
+}
+
+func signUp(user User) bool {
+	iter := getUserByEmail(user.Email)
+	var existingUser User
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return false
+		}
+		err = mapstructure.Decode(doc.Data(), existingUser)
+		if err != nil {
+			return false
+		}
+		break
+	}
+	if existingUser.ID == "" {
+		id, _ := uuid.NewV4()
+		user.ID = id.String()
+		user.Password = hashAndSalt(user.Password)
+		ok := addUserToDb(user)
+		if !ok {
+			return false
+		}
+		return true
+	}
+	return false
+}
+
+func signIn(user User) (bool, string, string) {
+	ok, userid := validateUser(user.Email, user.Password)
+	if !ok {
+		return false, "", ""
+	}
+	var token string
+	ok, token = generateToken(userid, user.Email)
+	if !ok {
+		return false, "", ""
+	}
+	return true, userid, token
+}
+
+func generateToken(userID string, email string) (bool, string) {
+	expirationTime := time.Now().Add(24 * time.Hour)
+	claims := &Claims{
+		UserID: userID,
+		Email:  email,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expirationTime.Unix(),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte("secret-key"))
+	if err != nil {
+		return false, ""
+	}
+	return true, tokenString
+}
+
+func hashAndSalt(pwd string) string {
+	hash, err := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.MinCost)
+	if err != nil {
+		return ""
+	}
+	return string(hash)
+}
+
+func comparePasswords(hashedPwd string, plainPwd string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPwd), []byte(plainPwd))
+	if err != nil {
+		return false
+	}
+	return true
 }

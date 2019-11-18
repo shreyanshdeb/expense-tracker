@@ -1,4 +1,8 @@
 {
     "Port" : "1234",
-    "FirebaseCredentialsFilePath" : "I:\\Work\\Dev\\Firestore\\Keys\\expense-tracker-847c0-firebase-adminsdk-26den-0d4208b9ee.json"
+    "FirebaseCredentialsFilePath" : "I:\\Work\\Dev\\Firestore\\Keys\\expense-tracker.json",
+    "Collections" : { 
+            "Expense" : "expense-test",
+            "User" : "user-test"
+    }
 }

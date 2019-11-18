@@ -53,6 +53,7 @@ type ResponseStruct struct {
 type Configuration struct {
 	Port                        string
 	FirebaseCredentialsFilePath string
+	Collections map[string]string
 }
 
 var Expensedb = []*Expense{}

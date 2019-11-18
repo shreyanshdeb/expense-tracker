@@ -261,50 +261,34 @@ func getExpenseBreakdownForMonthHandler(w http.ResponseWriter, r *http.Request) 
 	w.Write(jsonData)
 }
 
-func signIn(w http.ResponseWriter, r *http.Request) {
+func signInHandler(w http.ResponseWriter, r *http.Request) {
 	var user User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	ok, userid := validateUser(user.Email, user.Password)
+	ok, userid, token := signIn(user)
 	if !ok {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	expirationTime := time.Now().Add(24 * time.Hour)
-	claims := &Claims{
-		UserID: userid,
-		Email:  user.Email,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: expirationTime.Unix(),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte("secret-key"))
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	response := struct {
-		ID             string
-		Email          string
-		Authorization  string
-		ExpirationTime string
+		ID            string
+		Email         string
+		Authorization string
 	}{
 		userid,
 		user.Email,
-		tokenString,
-		expirationTime.String(),
+		token,
 	}
-	responseJson, err := json.Marshal(response)
+	responseJSON, err := json.Marshal(response)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(responseJson)
+	w.Write(responseJSON)
 }
 
 func isAuthorized(h http.HandlerFunc) http.HandlerFunc {
@@ -337,4 +321,31 @@ func isAuthorized(h http.HandlerFunc) http.HandlerFunc {
 }
 
 func testHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+func signUpHandler(w http.ResponseWriter, r *http.Request) {
+	var user User
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	ok := signUp(user)
+	var response ResponseStruct
+	if !ok {
+		response = ResponseStruct{
+			false,
+			nil,
+		}
+
+	} else {
+		response = ResponseStruct{
+			true,
+			nil,
+		}
+	}
+	responseJSON, _ := json.Marshal(response)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(responseJSON)
+	return
 }
