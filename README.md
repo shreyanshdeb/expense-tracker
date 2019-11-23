@@ -1,6 +1,6 @@
-#Expense Tracker
+# Expense Tracker #
 
-##Introduction
+## Introduction ##
 
 Expense tracker that categorizes expenses into three types 'Savings', 'Needs' and 'Wants'. Borrowing the idea from the famous budgeting rule 50/30/20. 
 
@@ -8,7 +8,7 @@ Expense tracker that categorizes expenses into three types 'Savings', 'Needs' an
 
 >-Lifehacker, The 10 Best Financial Rules of Thumb
 
-##Behind the scenes
+## Behind the scenes ##
 
 * The webserver is written in go with routing in gorilla mux. 
 
@@ -16,7 +16,7 @@ Expense tracker that categorizes expenses into three types 'Savings', 'Needs' an
 
 * Auth using JSON Web Tokens.
 
-##What did I Learn
+## What did I Learn ##
 
 * Creating Restful APIs in go.
 
