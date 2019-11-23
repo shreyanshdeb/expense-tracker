@@ -7,6 +7,10 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
+const InvalidTokenURI = "/apis/v1/problems/invalid-token"
+const ExpensesProblemURI = ""
+const ParsingProblemURL = ""
+
 type JSONExpense struct {
 	ID       string  `json:"ID"`
 	Title    string  `json:"Title"`
@@ -53,7 +57,15 @@ type ResponseStruct struct {
 type Configuration struct {
 	Port                        string
 	FirebaseCredentialsFilePath string
-	Collections map[string]string
+	Collections                 map[string]string
+}
+
+type ProblemDetails struct {
+	Type     string
+	Title    string
+	Status   string
+	Detail   string
+	Instance string
 }
 
 var Expensedb = []*Expense{}

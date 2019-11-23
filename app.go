@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -13,7 +14,7 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-func getExpenses(userID string) ([]Expense, bool) {
+func getExpenses(userID string) ([]Expense, error) {
 	var result []Expense
 	iter := getAllExpensesFromDb(userID)
 	for {
@@ -22,21 +23,24 @@ func getExpenses(userID string) ([]Expense, bool) {
 			break
 		}
 		if err != nil {
-			return nil, false
+			return nil, err
 		}
 		var expense Expense
 		mapstructure.Decode(doc.Data(), &expense)
 		result = append(result, expense)
 	}
-	return result, true
+	return result, nil
 }
 
-func addExpense(expense Expense) bool {
-	ok := addExpenseToDb(expense)
-	return ok
+func addExpense(expense Expense) error {
+	err := addExpenseToDb(expense)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func getExpenseByID(userID string, ID string) (Expense, bool) {
+func getExpenseByID(userID string, ID string) (Expense, error) {
 	iter := getExpenseByIDFromDb(userID, ID)
 	var expense Expense
 	for {
@@ -45,31 +49,30 @@ func getExpenseByID(userID string, ID string) (Expense, bool) {
 			break
 		}
 		if err != nil {
-			return expense, false
+			return expense, err
 		}
 		mapstructure.Decode(doc.Data(), &expense)
 	}
-	return expense, true
+	return expense, nil
 }
 
-func deleteExpenseByID(userID string, ID string) bool {
-	ok := deleteExpenseFromDb(userID, ID)
-	return ok
+func deleteExpenseByID(userID string, ID string) error {
+	err := deleteExpenseFromDb(userID, ID)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func updateExpenseByID(id string, expense Expense) bool {
-	ok := updateExpenseInDb(id, expense)
-	return ok
+func updateExpenseByID(id string, expense Expense) error {
+	err := updateExpenseInDb(id, expense)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func listExpensesForMonth(userID string, fromDate time.Time, toDate time.Time) ([]*Expense, bool) {
-	// var ExpenseForTheMonth = []*Expense{}
-	// for _, v := range Expensedb {
-	// 	if v.UserID == userID && (v.DateTime.Year() == date.Year()) && (v.DateTime.Month() == date.Month()) {
-	// 		ExpenseForTheMonth = append(ExpenseForTheMonth, v)
-	// 	}
-	// }
-	// return ExpenseForTheMonth
+func listExpensesForMonth(userID string, fromDate time.Time, toDate time.Time) ([]*Expense, error) {
 	iter := getExpensesForDateFromDb(userID, fromDate, toDate)
 	var result []*Expense
 	for {
@@ -78,23 +81,23 @@ func listExpensesForMonth(userID string, fromDate time.Time, toDate time.Time) (
 			break
 		}
 		if err != nil {
-			return nil, false
+			return nil, err
 		}
 		var expense Expense
 		err = mapstructure.Decode(doc.Data(), &expense)
 		if err != nil {
-			return nil, false
+			return nil, err
 		}
 		result = append(result, &expense)
 	}
-	return result, true
+	return result, nil
 }
 
-func getTotalForMonth(userID string, fromDate time.Time, toDate time.Time) (interface{}, bool) {
+func getTotalForMonth(userID string, fromDate time.Time, toDate time.Time) (interface{}, error) {
 	var total float64
-	expenseList, ok := listExpensesForMonth(userID, fromDate, toDate)
-	if !ok {
-		return nil, false
+	expenseList, err := listExpensesForMonth(userID, fromDate, toDate)
+	if err != nil {
+		return nil, err
 	}
 	for _, v := range expenseList {
 		total += v.Amount
@@ -104,18 +107,18 @@ func getTotalForMonth(userID string, fromDate time.Time, toDate time.Time) (inte
 	}{
 		total,
 	}
-	return totalStruct, true
+	return totalStruct, nil
 }
 
-func listExpenseBreakdownForMonth(userID string, fromDate time.Time, toDate time.Time) (*ExpenseBreakdown, bool) {
+func listExpenseBreakdownForMonth(userID string, fromDate time.Time, toDate time.Time) (*ExpenseBreakdown, error) {
 	var breakdown = ExpenseBreakdown{
 		Savings: []*Expense{},
 		Needs:   []*Expense{},
 		Wants:   []*Expense{},
 	}
-	expenseList, ok := listExpensesForMonth(userID, fromDate, toDate)
-	if !ok {
-		return nil, false
+	expenseList, err := listExpensesForMonth(userID, fromDate, toDate)
+	if err != nil {
+		return nil, err
 	}
 	for _, v := range expenseList {
 		if v.Category == "Needs" {
@@ -126,13 +129,13 @@ func listExpenseBreakdownForMonth(userID string, fromDate time.Time, toDate time
 			breakdown.Savings = append(breakdown.Savings, v)
 		}
 	}
-	return &breakdown, true
+	return &breakdown, nil
 }
 
-func getExpenseBreakdownForMonth(userID string, fromDate time.Time, toDate time.Time) (interface{}, bool) {
-	breakdown, ok := listExpenseBreakdownForMonth(userID, fromDate, toDate)
-	if !ok {
-		return nil, false
+func getExpenseBreakdownForMonth(userID string, fromDate time.Time, toDate time.Time) (interface{}, error) {
+	breakdown, err := listExpenseBreakdownForMonth(userID, fromDate, toDate)
+	if err != nil {
+		return nil, err
 	}
 	var savingsTotal float64
 	var needsTotal float64
@@ -161,7 +164,7 @@ func getExpenseBreakdownForMonth(userID string, fromDate time.Time, toDate time.
 		wantsTotal,
 	}
 
-	return expenseBreakdown, true
+	return expenseBreakdown, nil
 }
 
 func validateUser(Email string, Password string) (bool, string) {
@@ -186,35 +189,35 @@ func validateUser(Email string, Password string) (bool, string) {
 	return false, ""
 }
 
-func extractClaims(tokenString string) (jwt.MapClaims, bool) {
+func extractClaims(tokenString string) (jwt.MapClaims, error) {
 	secretKey := []byte("secret-key")
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return secretKey, nil
 	})
 	if err != nil {
-		return nil, false
+		return nil, fmt.Errorf(err.Error(), "Could not extract claim")
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		return claims, true
+		return claims, nil
 	} else {
-		return nil, false
+		return nil, fmt.Errorf("Invalid Claims")
 	}
 }
 
-func extractUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
+func extractUserID(w http.ResponseWriter, r *http.Request) (string, error) {
 	reqToken := r.Header.Get("Authorization")
 	splitToken := strings.Split(reqToken, "Bearer")
 	if len(splitToken) < 2 {
-		return "", false
+		return "", fmt.Errorf("Invalid bearer token")
 	}
 	token := strings.TrimSpace(splitToken[1])
 
-	claims, ok := extractClaims(token)
-	if !ok {
-		return "", false
+	claims, err := extractClaims(token)
+	if err != nil {
+		return "", err
 	}
 	userID := fmt.Sprintf("%v", claims["UserID"])
-	return userID, true
+	return userID, nil
 }
 
 func getTerminalDates(date time.Time) (time.Time, time.Time) {
@@ -224,7 +227,7 @@ func getTerminalDates(date time.Time) (time.Time, time.Time) {
 	return firstOfMonth, lastOfMonth
 }
 
-func signUp(user User) bool {
+func signUp(user User) error {
 	iter := getUserByEmail(user.Email)
 	var existingUser User
 	for {
@@ -233,25 +236,25 @@ func signUp(user User) bool {
 			break
 		}
 		if err != nil {
-			return false
+			return err
 		}
 		err = mapstructure.Decode(doc.Data(), existingUser)
 		if err != nil {
-			return false
+			return err
 		}
 		break
 	}
-	if existingUser.ID == "" {
-		id, _ := uuid.NewV4()
-		user.ID = id.String()
-		user.Password = hashAndSalt(user.Password)
-		ok := addUserToDb(user)
-		if !ok {
-			return false
-		}
-		return true
+	if existingUser.ID != "" {
+		return fmt.Errorf("User already exists")
 	}
-	return false
+	id, _ := uuid.NewV4()
+	user.ID = id.String()
+	user.Password = hashAndSalt(user.Password)
+	err := addUserToDb(user)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func signIn(user User) (bool, string, string) {
@@ -298,4 +301,16 @@ func comparePasswords(hashedPwd string, plainPwd string) bool {
 		return false
 	}
 	return true
+}
+
+func createProblemJSON(Type string, Title string, Status string, Detail string, Instance string) []byte {
+	problemJSON, err := json.Marshal(ProblemDetails{
+		Type,
+		Title,
+		Status,
+		Detail,
+		Instance,
+	})
+	fmt.Println(err)
+	return problemJSON
 }

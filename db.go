@@ -30,12 +30,12 @@ func initDb() (*firestore.Client, error) {
 	return client, nil
 }
 
-func addExpenseToDb(expense Expense) bool {
+func addExpenseToDb(expense Expense) error {
 	_, err := firestoreClient.Collection(config.Collections["Expense"]).Doc(expense.ID).Set(context.Background(), expense)
 	if err != nil {
-		return false
+		return fmt.Errorf(err.Error(), "Could not create expense")
 	}
-	return true
+	return nil
 }
 
 func getAllExpensesFromDb(userID string) *firestore.DocumentIterator {
@@ -53,28 +53,28 @@ func getExpensesForDateFromDb(userID string, fromdate time.Time, todate time.Tim
 	return iter
 }
 
-func deleteExpenseFromDb(userID string, ID string) bool {
+func deleteExpenseFromDb(userID string, ID string) error {
 	_, err := firestoreClient.Collection(config.Collections["Expense"]).Doc(ID).Delete(context.Background())
 	if err != nil {
-		return false
+		return fmt.Errorf(err.Error(), "Could not delete expense")
 	}
-	return true
+	return nil
 }
 
-func updateExpenseInDb(ID string, expense Expense) bool {
+func updateExpenseInDb(ID string, expense Expense) error {
 	_, err := firestoreClient.Collection(config.Collections["Expense"]).Doc(ID).Set(context.Background(), expense)
 	if err != nil {
-		return false
+		return fmt.Errorf(err.Error(), "Could not update expense")
 	}
-	return true
+	return nil
 }
 
-func addUserToDb(user User) bool {
+func addUserToDb(user User) error {
 	_, err := firestoreClient.Collection(config.Collections["User"]).Doc(user.ID).Set(context.Background(), user)
 	if err != nil {
-		return false
+		return fmt.Errorf(err.Error(), "Could not create user")
 	}
-	return true
+	return nil
 }
 
 func getUserByID(userID string) *firestore.DocumentIterator {
